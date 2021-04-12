@@ -25,3 +25,8 @@ missing <- anti_join(uniquestations, currentstations, by = "Name")
 
 
 # Write the Unique Stations out to CSV
+
+
+# Write Missing stations to CSV
+missingcsvfile <- "data/eda/sept2019stns_miss_currentstns.csv"
+write_csv(missing, missingcsvfile)
