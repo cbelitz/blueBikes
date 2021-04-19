@@ -102,21 +102,22 @@ stations$bikelanedist <- st_distance(stations, bikelanes[nearest_bikelane_id,], 
 nearest_tstop_id <- st_nearest_feature(stations, tstops)
 stations$tstopdist <- st_distance(stations, tstops[nearest_tstop_id,], by_element = TRUE)
 
+### COMMENTING THIS SECTION OUT, because we may not even need this data.
 ### Find the nearest station. Comparing station to station, remove current one: https://stackoverflow.com/questions/49200458/find-nearest-features-using-sf-in-r
-closest <- numeric()
-for(i in seq_len(nrow(stations))){
-  #closest[[i]] <- stations[which.min(st_distance(stations[-i,], stations[i,])),]
-  closest[i] <- st_distance(stations[i,], stations[-i,])
-}
+#closest <- numeric()
+#for(i in seq_len(nrow(stations))){
+#  #closest[[i]] <- stations[which.min(st_distance(stations[-i,], stations[i,])),]
+#  closest[i] <- st_distance(stations[i,], stations[-i,])
+#}
 
-stations$stndist <- closest
+#stations$stndist <- closest
 
 # Write a shapefile for data verification
 write_sf(stations, "data/gis/TESTstations.shp")
 
-# Write the Unique Stations out to CSV
-uniquecsvfile <- "data/gis/sept2019stns.csv"
-write_csv(uniquestations, uniquecsvfile)
+# Write the Stations out to CSV
+csvfile <- "data/sept2019stns.csv"
+write_csv(stations, csvfile)
 
 
 
