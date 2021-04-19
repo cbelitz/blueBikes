@@ -116,7 +116,7 @@ stations$tstopdist <- st_distance(stations, tstops[nearest_tstop_id,], by_elemen
 write_sf(stations, "data/gis/TESTstations.shp")
 
 # Write the Stations out to CSV
-csvfile <- "data/sept2019stns.csv"
+csvfile <- "data/stations_09_19.csv"
 write_csv(stations, csvfile)
 
 
