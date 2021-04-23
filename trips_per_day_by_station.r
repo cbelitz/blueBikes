@@ -12,8 +12,13 @@ summary(trip_data)
 # extract just date from start times
 trip_data$date = as.Date(trip_data$starttime)
 
-# create empty data frame to fill after transformations
-agg_trips = data.frame(matrix(0, ncol=4, nrow=9535))
+# remove outlier trips. start with 3 std dev, adjust if appropriate
+outlier_threshold = mean(trip_data$tripduration) + 3*sd(trip_data$tripduration)
+trip_data = subset(trip_data, trip_data[, "tripduration"] < outlier_threshold)
+
+# create empty data frame to fill after transformations.
+# numrow is fixed based on number of stations*dates, need to adjust if using a different month
+agg_trips = data.frame(matrix(0, ncol=4, nrow=9529))
 colnames(agg_trips) = c('id', 'date', 'total.start', 'total.end')
 
 # count number of trips in and out of a station by day
