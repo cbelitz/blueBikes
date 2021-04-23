@@ -9,8 +9,14 @@
 #                  out to a dataset, and read that in.
 
 #install.packages("dplyr") # the tidyverse version of plyr.
+# dplyr included in the call below, but be aware that loading dplyr will crap on some plyr functions, so 
+# running trips_per_day_by_station.r (which uses plyr) will fail in the same session after loading tidyverse. :(
 
 library(tidyverse)
+
+##################
+### READ FILES ###
+##################
 
 # READ in the trip data
 # agg_trips already in memory; see note above
@@ -18,8 +24,19 @@ library(tidyverse)
 # READ in the station data
 stations <- read.csv("data/stations_09_19.csv")
 
+# READ in the weather data, forcing class so Date is Date
+weather <- read.csv("data/wunderground_09_19.csv", colClasses = c("Date","integer","numeric","integer","integer","numeric","integer","numeric"))
+
+
+#################
+### JOIN DATA ###
+#################
+
 # JOIN the station data to the aggregated trip data
 dailytrips <- left_join(agg_trips, stations, by = "id")
+
+# JOIN the weather data
+dailytrips <- left_join(dailytrips, weather, by = c("date" = "Date"))
 
 # VERIFICATION-LITE :)
 # Look at the data, checking for NAs. Only in Total.docks, which makes sense, because docks are from the provided csv,
