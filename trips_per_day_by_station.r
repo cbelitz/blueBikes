@@ -1,3 +1,4 @@
+# install.packages("plyr") # for aggregation
 library(plyr)
 
 # read in trip data for Sep 2019. A bit slow but only needs to be done once
@@ -35,3 +36,6 @@ agg_trips$total.end = jointdataset$freq.y
 
 # calculate flow for each station (end - start since we want to know the change)
 agg_trips$flow = agg_trips$total.end - agg_trips$total.start
+
+# add in day of the week for averages
+agg_trips$weekday = weekdays(agg_trips$date)
