@@ -12,11 +12,16 @@
 
 library(tidyverse)
 
-# agg_trips already in memory
+# READ in the trip data
+# agg_trips already in memory; see note above
+
+# READ in the station data
 stations <- read.csv("data/stations_09_19.csv")
 
+# JOIN the station data to the aggregated trip data
 dailytrips <- left_join(agg_trips, stations, by = "id")
 
+# VERIFICATION-LITE :)
 # Look at the data, checking for NAs. Only in Total.docks, which makes sense, because docks are from the provided csv,
 #   and not all stations in the Sept ride data were present in the provided csv.
 summary(dailytrips)
@@ -25,10 +30,11 @@ summary(dailytrips)
 #   of some long rides. Looks like it is exactly 0.
 sum(dailytrips$flow)
 
+# PREPARE to export the data
 # Remove the CSV station label (using ID instead) and geometry fields
 dailytrips.predictors <- dailytrips[,-c(8,12)]
 
 
-# Write the Stations out to CSV
+# WRITE the aggregated ride data -- with station attribute data -- out to CSV
 csvfile <- "data/trips_per_day_09_19.csv"
 write_csv(dailytrips.predictors, csvfile)
