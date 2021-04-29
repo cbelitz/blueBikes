@@ -27,6 +27,8 @@ rf.trips = randomForest(flow~weekday+Name+District+Public+Total.docks+bikelanedi
                         ntree=25,
                         na.action=na.exclude,
                         importance=TRUE)
+rf.trips # only 20% of variance explained
+
 yhat.rf = predict(rf.trips, newdata=clean_trips[-train,])
 
 mean((yhat.rf-trips.test)^2) #test MSE is 75, so on average off by ~8 
@@ -57,7 +59,6 @@ for (m in m.values) {
   j = j + 1
 }
 
-length(all_err[[1]])
 x = seq(1, 10)
 x = x*10
 plot(x, all_err[[1]], ylim=c(63,84), xlab="Number of Trees", ylab="Test Set MSE")
@@ -69,19 +70,32 @@ lines(x, all_err[[3]], col="green")
 legend(x="topright", legend=c("m=p", "m=p/2", expression(m==sqrt(p))), fill=c("black", "red", "green"))
 
 # m=3 and m=2 perform similarly, which makes sense. M=2 is slightly better, so we will use that. It looks like it stabilizes around 30 trees
+rf.trips.2 = randomForest(flow~weekday+Name+District+Public+Total.docks+bikelanedist+tstopdist,
+                        data=clean_trips,
+                        subset=train,
+                        mtry=2,
+                        ntree=50,
+                        importance=TRUE)
+yhat.rf.2 = predict(rf.trips.2, newdata=clean_trips[-train,])
+mean((yhat.rf.2-trips.test)^2) #test MSE is 64, so on average off by ~8 (slightly better than initial model)
+plot(yhat.rf.2-trips.test) #no pattern to the residual, which is good
+rf.trips.2 #25% of variance explained, slightly better but not great
+importance(rf.trips.2) # most important are now bikelanedist, total docks, and tstopdist
+varImpPlot(rf.trips.2)
 
 
-# try bagging
-clean_trips$Name = as.factor(clean_trips$Name)
+# try boosting
 set.seed(1)
 boost.trips = gbm(flow~weekday+Name+District+Total.docks+bikelanedist+tstopdist,
                   data=clean_trips,
                   distribution = "bernoulli",
                   n.trees = 1000,
-                  interaction.depth = 3) 
+                  interaction.depth = 3,) 
 summary(boost.trips) #most important are name, weekday
+plot(boost.trips)
 
 #predict on test set for error
 yhat.boost= predict(boost.trips, newdata=clean_trips[-train,], n.trees=1000, type="response")
 mean((yhat.boost-trips.test)^2) #test MSE is 81, so on average off by 9
+plot(yhat.boost-trips.test)
 
