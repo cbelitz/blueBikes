@@ -158,14 +158,14 @@ trips %>%
   geom_boxplot() +
   xlab("activity class") +
   theme(legend.position="none") +
-  xlab("")
+  xlab("Activity Class") +
+  ylab("Flow")+
+  ggtitle("Distribution of Flow by Activity Class (Number of Rentals)")
 
 # High activity flow to low and medium activity stations
 aggregate(flow ~ activity_class, trips, sum)
 
 
-# 2D clustering?
-plot(tstopdist,)
 
 ############################
 ### MODELING, PREDICTION ###
