@@ -5,6 +5,7 @@ library(tidyverse)
 
 
 # READ in the trips by station, day data
+# tripClasses is going to force-read the data into R data types that I want them to be
 tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
 trips <- read.csv("data/trips_per_day_09_19.csv", colClasses = tripClasses)
 
@@ -100,5 +101,40 @@ plot(tstopdist,total.start) # Is there overlap? Like, T-Stops are designed aroun
 plot(bikelanedist,total.start)
 
 
-lm1 <- lm(total.start ~ id + weekday + TempAvg, data = trips)
+## MODELING, PREDICITON
+
+set.seed(517)
+# Create a vector for training, sampling 75% (or .75) of the dataset
+train.v <- sample(nrow(trips), nrow(trips) * .75, replace = FALSE)
+
+trips.train <- trips[train.v,]
+trips.test <- trips[-train.v,]
+
+
+lm1 <- lm(total.start ~ id, data = trips)
 summary(lm1) 
+plot(id, flow)
+
+lm2 <- lm(flow ~ id, data = trips)
+
+
+
+# It seems like it might be helpful, rather than having a factor with 328 levels (each station), maybe to have a grouping
+# of activity level, so we could have low-medium-high or some such thing? Would we be able to use clustering models for this?
+# This would define an attribute of the station
+
+# Critical question: Is it inappropriate to use k-means on single-vector data? Most of the examples seem to use two-dimensional
+
+set.seed(517)
+total_daily_rides_per_stn <- trips %>% group_by(id) %>% summarise(Trips = sum(total.start))
+avg_daily_rides_per_stn <- trips %>% group_by(id) %>% summarise(Trips = mean(total.start))
+km.out = kmeans(avg_daily_rides_per_stn$Trips, 3 , nstart = 20)
+km.out
+ggplot(data = avg_daily_rides_per_stn, aes(id, Trips, colour = km.out$cluster)) +
+  geom_point(size = 2) +
+  ggtitle("K-Means Clustering to Determine Activity Level")
+
+temp <- data.frame(avg_daily_rides_per_stn$id,km.out$cluster)
+names(temp) <- c("id","activity_class")
+# maybe add these classes back to the trips data?
+newtable <- merge(trips, temp)
