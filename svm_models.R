@@ -18,8 +18,9 @@ svr.trips = svm(flow~weekdayend+Name+District+Total.docks+bikelanedist+tstopdist
                 kernel="radial", cost=0.1)
 summary(svr.trips)
 
+set.seed(1)
 svr.predict = predict(svr.trips, newdata=clean_trips[-train,])
-mean((svr.predict-trips.test)^2) #test MSE is 79, so on average off by ~8 (worse than trees but similar overall)
+mean((svr.predict-trips.test)^2) #test MSE is 104
 plot(svr.predict-trips.test) 
 plot(trips.test, svr.predict)
 
@@ -31,10 +32,27 @@ svr.trips.poly = svm(flow~weekdayend+Name+District+Total.docks+bikelanedist+tsto
                 kernel="polynomial", cost=1)
 summary(svr.trips.poly)
 
+set.seed(1)
 svr.predict.poly = predict(svr.trips.poly, newdata=clean_trips[-train,])
-mean((svr.predict.poly-trips.test)^2) # test MSE is 82
+mean((svr.predict.poly-trips.test)^2) # test MSE is 104
 plot(svr.predict.poly-trips.test) 
 plot(trips.test, svr.predict.poly)
+
+# do some tuning on polynomial kernel 
+set.seed(1)
+tune.trips = tune(svm, flow~weekday+Name+District+Total.docks+bikelanedist+tstopdist,
+                  data=clean_trips[train,],
+                  kernel="radial",
+                  ranges=list(cost=c(0.1, 1, 5, 10),
+                              gamma=c(0.001, 0.01, 0.1, 0.5)))
+
+
+tune.trips$best.parameters # cost of 10 and gamma of 0.1
+tune.trips$best.performance #MSE 65
+set.seed(1)
+svr.predict = predict(tune.trips$best.model, newdata=clean_trips[-train,])
+mean((svr.predict-trips.test)^2) #134
+
 
 # do some tuning on radial kernel 
 set.seed(1)
@@ -45,8 +63,13 @@ tune.trips = tune(svm, flow~weekday+Name+District+Total.docks+bikelanedist+tstop
                              gamma=c(0.001, 0.01, 0.1, 0.5)))
 
 
-tune.trips$best.parameters
-tune.trips$best.performance 
+tune.trips$best.parameters # cost of 10 and gamma of 0.1
+tune.trips$best.performance #MSE 65
+set.seed(1)
+svr.predict = predict(tune.trips$best.model, newdata=clean_trips[-train,])
+mean((svr.predict-trips.test)^2) #134
+plot(trips.test, svr.predict)
+
 #best is at highest values, so we can run again with a few higher and see if they continue to improve
 set.seed(1)
 tune.trips2 = tune(svm, flow~weekday+Name+District+Total.docks+bikelanedist+tstopdist,
@@ -57,10 +80,13 @@ tune.trips2 = tune(svm, flow~weekday+Name+District+Total.docks+bikelanedist+tsto
 
 tune.trips2$best.parameters
 tune.trips2$best.performance 
-# best gamma is 1 and best cost is 10
+# best gamma is still 0.1 and best cost is 10
 
-svr.predict = predict(tune.trips$best.model, newdata=clean_trips[-train,])
-mean((svr.predict-trips.test)^2) #test MSE is 81, so on average off by ~9 (worse than trees but similar overall)
+tune.trips2$performances
+
+set.seed(1)
+svr.predict = predict(tune.trips2$best.model, newdata=clean_trips[-train,])
+mean((svr.predict-trips.test)^2) #still 134
 plot(svr.predict-trips.test) 
 plot(trips.test, svr.predict)
 
@@ -96,4 +122,5 @@ tune.starts2$best.performance #much better! 377 MSE so off by ~20 trips
 tune.predict = predict(tune.starts2$best.model, newdata=clean_trips[-train,])
 mean((tune.predict-starts.test)^2) #test MSE is 340, so on average off by ~18 
 plot(tune.predict-starts.test) #much more centered around 0
-plot(starts.test, tune.predict) #actually looks  decent. definitely a lot going on at the bottom there
+plot(starts.test, tune.predict, xlab="Starts (Data)", ylab="Starts (Predicted)", main="Radial SVM") #actually looks  decent. definitely a lot going on at the bottom there
+tune.starts2$best.model
