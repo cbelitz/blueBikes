@@ -22,7 +22,7 @@ trips$ztrips <- ave(trips$total.start, trips$id, FUN=scale)
 
 ### RECLASSIFY DAY OF WEEK AS WEEKDAY or WEEKEND
 # Categorize weekday/weekend
-trips$weekdayend <- ifelse(trips$weekday %in% c("Sunday","Saturday"), "weekend", "weekday")
+trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), "weekend", "weekday"))
 
 
 ### K-MEANS CLUSTER
@@ -165,28 +165,57 @@ trips %>%
 # High activity flow to low and medium activity stations
 aggregate(flow ~ activity_class, trips, sum)
 
+detach(trips)
 
 
 ############################
 ### MODELING, PREDICTION ###
 ############################
 
+
+# REMOVE NAs from TRIPS
+clean_trips <- na.omit(trips)
+
+# SELECT TRAINING DATA
 set.seed(517)
 # Create a vector for training, sampling 75% (or .75) of the dataset
-train.v <- sample(nrow(trips), nrow(trips) * .75, replace = FALSE)
+train.v <- sample(nrow(clean_trips), nrow(clean_trips) * .75, replace = FALSE)
 
-trips.train <- trips[train.v,]
-trips.test <- trips[-train.v,]
+# Not used
+#ctrips.train <- clean_trips[train.v,]
+#ctrips.test <- clean_trips[-train.v,]
+
+### LM STARTS ###
+# CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for STARTS
+ctrips.predictors.start <- clean_trips[,c(2:3,5:8,10:12,19)]
+
+# TRAIN STARTS
+lm_starts <- lm(total.start ~ ., data = ctrips.predictors.start[train.v,-5]) # -5 in the data columns removes Name.
+summary(lm_starts) # R^2 with names: 0.89. without names: 0.24
+#plot(lm1)
 
 
-lm1 <- lm(total.start ~ activity_class, data = trips)
-summary(lm1) 
-plot(lm1)
+### LM FLOW ###
+# CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for FLOW
+# ... actually I think they are the same -- the response variable is pulled out and we are left with the rest
+ctrips.predictors.flow <- clean_trips[,c(2:3,5:8,10:12,19)]
+
+# TRAIN FLOW
+lm_flow <- lm(flow ~ ., data = ctrips.predictors.flow[train.v,]) # -5 in the data columns removes Name.
+summary(lm_flow) # R^2 with names: 0.37. without names: 0.03
 
 
 
-lm2 <- lm(flow ~ id, data = trips)
+### PREDICTING STARTS ###
+pred.starts <- predict(lm_starts, ctrips.predictors.start[-train.v,])
+pred.starts.MSE <- mean((pred.starts - ctrips.predictors.start$total.start[-train.v])^2)
+pred.starts.MSE
+# MSE with names: 237.6147
+# MSE without names: 1460.618
 
-## work on ascending order based on monthly trips
-asco <- avg_daily_rides_per_stn[order(avg_daily_rides_per_stn$Trips),]$id
-
+### PREDICTING FLOW ###
+pred.flow <- predict(lm_flow, ctrips.predictors.start[-train.v,])
+pred.flow.MSE <- mean((pred.flow - ctrips.predictors.start$total.start[-train.v])^2)
+pred.flow.MSE
+# MSE with names: 3682.01
+# MSE without names: 3590.09
