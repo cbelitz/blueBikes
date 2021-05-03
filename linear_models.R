@@ -38,7 +38,9 @@ total_daily_rides_per_stn <- trips %>% group_by(id) %>% summarise(Trips = sum(to
 avg_daily_rides_per_stn <- trips %>% group_by(id) %>% summarise(Trips = mean(total.start))
 km.out = kmeans(avg_daily_rides_per_stn$Trips, 3 , nstart = 20)
 km.out
-ggplot(data = avg_daily_rides_per_stn, aes(id, Trips, colour = km.out$cluster)) +
+ggplot(data = avg_daily_rides_per_stn, aes(id, Trips, colour = factor(km.out$cluster))) +
+  scale_color_discrete(labels = c('low','medium','high')) +
+  labs(color = "Activity Class") +
   geom_point(size = 2) +
   ggtitle("K-Means Clustering to Determine Activity Level")
 
