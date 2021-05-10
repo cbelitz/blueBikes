@@ -26,6 +26,28 @@ cross_validate_flow = function(m.values, i.values, dataset, data.subset, data.te
   return (all_err)
 }
 
+cross_validate_start = function(m.values, i.values, dataset, data.subset, data.test) {
+  all_err = list()
+  j = 1
+  for (m in m.values) {
+    # create an empty vector for the errors
+    errors = vector(mode="list")
+    for (i in i.values) {
+      set.seed(1)
+      rf.trips = randomForest(total.start~weekdayend+District+Total.docks+bikelanedist+tstopdist+TempAvg+WindAvg+Precipitation,
+                              data=dataset,
+                              subset=data.subset,
+                              mtry=m,
+                              ntree=i)
+      yhat.rf = predict(rf.trips, newdata=dataset[-data.subset,])
+      errors = c(errors, mean((yhat.rf-data.test)^2))
+    }
+    all_err[j] = list(errors)
+    j = j + 1
+  }
+  return (all_err)
+}
+
   
 # remove missing values
 clean_trips = na.omit(trips)
@@ -212,9 +234,9 @@ plot(yhat.boost-starts.centered.test) #now centered around 0
 # overall this is slightly better than linear model without names
 
 
-########################
-#### RF by Activity ####
-########################
+#############################
+#### RF by Activity Flow ####
+#############################
 
 
 ### let's see if we can predict starts on "high" usage stations only ###
@@ -273,7 +295,7 @@ flow.high.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+
                          importance=TRUE)
 #predict on test set for error
 set.seed(1)
-yhat.high=predict(flow.high, newdata=high[-train_high,])
+yhat.high=predict(flow.high.best, newdata=high[-train_high,])
 mean((yhat.high-trips.test.high)^2) #test MSE is 749 --> better than first model
 plot(yhat.high-trips.test.high) #nore centered around 0 with some outliers
 importance(flow.high.best) # most important are docks, start, bike/t distance
@@ -326,8 +348,8 @@ flow.medium.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedis
                                 importance=TRUE)
 #predict on test set for error
 set.seed(1)
-yhat.medium=predict(flow.medium, newdata=medium[-train_medium,])
-mean((yhat.medium-trips.test.medium)^2) #test MSE is 57 --> same as first model lol
+yhat.medium=predict(flow.medium.best, newdata=medium[-train_medium,])
+mean((yhat.medium-trips.test.medium)^2) #test MSE is 55 --> slightly improved
 plot(yhat.medium-trips.test.medium) #centered around 0 still
 importance(flow.medium.best) # most important are bikelane/tstop distance, total.start, docks
 varImpPlot(flow.medium.best)
@@ -385,3 +407,169 @@ mean((yhat.low-trips.test.low)^2) #test MSE is 20 --> same as first model
 plot(yhat.low-trips.test.low) #centered around 0
 importance(flow.low.best) # most important are total.start, bikelane/tstop distnace, District
 varImpPlot(flow.low.best)
+
+
+##############################
+#### RF by Activity Start ####
+##############################
+
+### Random forests for high alone
+set.seed(1)
+train_high = sample(1:nrow(high), nrow(high)*0.75)
+trips.test.high=high[-train_high ,"total.start"]
+
+set.seed(1)
+start.high = randomForest(total.start~weekdayend+District+Total.docks+bikelanedist+tstopdist+TempAvg+WindAvg+Precipitation,
+                         data=high,
+                         subset=train_high,
+                         mtry=6,
+                         ntree=25)
+
+
+#predict on test set for error
+set.seed(1)
+yhat.boost=predict(start.high, newdata=high[-train_high,])
+mean((yhat.boost-trips.test.high)^2) #test MSE is 2345
+plot(yhat.boost-trips.test.high) #not centered around 0 at all. some strong positive outliers
+
+# cross-validation
+all_err.high = cross_validate_start(c(8, floor(8/2), floor(8^(1/2))),
+                                   seq(10, 100, by=10),
+                                   high,
+                                   train_high,
+                                   trips.test.high
+)
+
+x = seq(1, 10)
+x = x*10
+plot(x, all_err.high[[1]], xlab="Number of Trees", ylab="Test Set MSE", ylim=c(1800, 2400), main="CV for RF for Starts")
+points(x, all_err.high[[2]], col="red")
+points(x, all_err.high[[3]], col="green")
+lines(x, all_err.high[[1]])
+lines(x, all_err.high[[2]], col="red")
+lines(x, all_err.high[[3]], col="green")
+legend(x="topright", legend=c("m=p", "m=p/2", expression(m==sqrt(p))), fill=c("black", "red", "green"))
+# weird plot.... m=2 is definitely best, with best tree number at 70?
+
+# best model
+set.seed(1)
+starts.high.best = randomForest(total.start~weekdayend+District+Total.docks+bikelanedist+tstopdist+TempAvg+WindAvg+Precipitation,
+                              data=high,
+                              subset=train_high,
+                              mtry=2,
+                              ntree=70,
+                              importance=TRUE)
+#predict on test set for error
+set.seed(1)
+yhat.high=predict(starts.high.best, newdata=high[-train_high,])
+mean((yhat.high-trips.test.high)^2) #test MSE is 1999 --> better than first model
+plot(yhat.high-trips.test.high) #still seeing some positive outliers
+importance(starts.high.best) # most important are weekdayend, bike/t distance, docks
+varImpPlot(starts.high.best)
+
+## Medium activity class ##
+
+# one to start
+set.seed(1)
+train_medium = sample(1:nrow(medium), nrow(medium)*0.75)
+trips.test.medium=medium[-train_medium ,"total.start"]
+
+set.seed(1)
+starts.medium = randomForest(total.start~weekdayend+District+Total.docks+bikelanedist+tstopdist+TempAvg+WindAvg+Precipitation,
+                           data=medium,
+                           subset=train_medium,
+                           mtry=6,
+                           ntree=25)
+
+#predict on test set for error
+set.seed(1)
+yhat.medium=predict(starts.medium, newdata=medium[-train_medium,])
+mean((yhat.medium-trips.test.medium)^2) #test MSE is 226 --> much lower!
+plot(yhat.medium-trips.test.medium) #centered around 0 mostly with one outlier (which looks like memorial day tbh)
+
+# cross-validation
+all_err.medium = cross_validate_start(c(8, floor(8/2), floor(8^(1/2))),
+                                     seq(10, 100, by=10),
+                                     medium,
+                                     train_medium,
+                                     trips.test.medium
+)
+
+plot(x, all_err.medium[[1]], xlab="Number of Trees", ylab="Test Set MSE", ylim=c(200, 300), main="CV for RF for Flow")
+points(x, all_err.medium[[2]], col="red")
+points(x, all_err.medium[[3]], col="green")
+lines(x, all_err.medium[[1]])
+lines(x, all_err.medium[[2]], col="red")
+lines(x, all_err.medium[[3]], col="green")
+legend(x="topright", legend=c("m=p", "m=p/2", expression(m==sqrt(p))), fill=c("black", "red", "green"))
+# 4 is clearly best m value, stabilizes around 40 trees
+
+# best model
+set.seed(1)
+starts.medium.best = randomForest(total.start~weekdayend+District+Total.docks+bikelanedist+tstopdist+TempAvg+WindAvg+Precipitation,
+                                data=medium,
+                                subset=train_medium,
+                                mtry=4,
+                                ntree=40,
+                                importance=TRUE)
+#predict on test set for error
+set.seed(1)
+yhat.medium=predict(starts.medium.best, newdata=medium[-train_medium,])
+mean((yhat.medium-trips.test.medium)^2) #test MSE is 228 --> not actually better than first model but very similar
+plot(yhat.medium-trips.test.medium) #more centered around 0
+importance(starts.medium.best) # most important are bikelane/tstop distance, weekdayend, docks
+varImpPlot(starts.medium.best)
+
+## low activity class ##
+
+# one to start
+set.seed(1)
+train_low = sample(1:nrow(low), nrow(low)*0.75)
+trips.test.low=low[-train_low ,"flow"]
+
+set.seed(1)
+start.low = randomForest(total.start~weekdayend+District+Total.docks+bikelanedist+tstopdist+TempAvg+WindAvg+Precipitation,
+                        data=low,
+                        subset=train_low,
+                        mtry=6,
+                        ntree=25)
+
+#predict on test set for error
+set.seed(1)
+yhat.low=predict(start.low, newdata=low[-train_low,])
+mean((yhat.low-trips.test.low)^2) #test MSE is 446 --> big!
+plot(yhat.low-trips.test.low) #these errors look like a mess
+
+# cross-validation
+all_err.low = cross_validate_start(c(8, floor(8/2), floor(8^(1/2))),
+                                  seq(10, 100, by=10),
+                                  low,
+                                  train_low,
+                                  trips.test.low
+)
+
+plot(x, all_err.low[[1]], xlab="Number of Trees", ylab="Test Set MSE",ylim=c(385, 460),  main="CV for RF for Flow")
+points(x, all_err.low[[2]], col="red")
+points(x, all_err.low[[3]], col="green")
+lines(x, all_err.low[[1]])
+lines(x, all_err.low[[2]], col="red")
+lines(x, all_err.low[[3]], col="green")
+legend(x="right", legend=c("m=p", "m=p/2", expression(m==sqrt(p))), fill=c("black", "red", "green"))
+#m=2 is superior and stable for most values of trees
+
+# best model
+set.seed(1)
+start.low.best = randomForest(total.start~weekdayend+District+Total.docks+bikelanedist+tstopdist+TempAvg+WindAvg+Precipitation,
+                             data=low,
+                             subset=train_low,
+                             mtry=2,
+                             ntree=30,
+                             importance=TRUE)
+
+#predict on test set for error
+set.seed(1)
+yhat.low=predict(start.low.best, newdata=low[-train_low,])
+mean((yhat.low-trips.test.low)^2) #test MSE is 392 --> superior
+plot(yhat.low-trips.test.low) #slighly less of a mess but still all positive
+importance(start.low.best) # most important are bikelane/tstop distance, docks, District
+varImpPlot(start.low.best)
