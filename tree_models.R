@@ -265,17 +265,19 @@ legend(x="topright", legend=c("m=p", "m=p/2", expression(m==sqrt(p))), fill=c("b
 
 # best model
 set.seed(1)
-flow.high = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
+flow.high.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
                          data=high,
                          subset=train_high,
                          mtry=floor(9/2),
-                         ntree=80)
+                         ntree=80,
+                         importance=TRUE)
 #predict on test set for error
 set.seed(1)
 yhat.high=predict(flow.high, newdata=high[-train_high,])
 mean((yhat.high-trips.test.high)^2) #test MSE is 749 --> better than first model
 plot(yhat.high-trips.test.high) #nore centered around 0 with some outliers
-
+importance(flow.high.best) # most important are docks, start, bike/t distance
+varImpPlot(flow.high.best)
 
 ## Medium activity class ##
 
@@ -320,13 +322,15 @@ flow.medium.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedis
                                 data=medium,
                                 subset=train_medium,
                                 mtry=4,
-                                ntree=100)
+                                ntree=100,
+                                importance=TRUE)
 #predict on test set for error
 set.seed(1)
 yhat.medium=predict(flow.medium, newdata=medium[-train_medium,])
 mean((yhat.medium-trips.test.medium)^2) #test MSE is 57 --> same as first model lol
 plot(yhat.medium-trips.test.medium) #centered around 0 still
-
+importance(flow.medium.best) # most important are bikelane/tstop distance, total.start, docks
+varImpPlot(flow.medium.best)
 
 ## low activity class ##
 
@@ -371,10 +375,13 @@ flow.low.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+t
                         data=low,
                         subset=train_low,
                         mtry=3,
-                        ntree=60)
+                        ntree=60,
+                        importance=TRUE)
 
 #predict on test set for error
 set.seed(1)
 yhat.low=predict(flow.low, newdata=low[-train_low,])
 mean((yhat.low-trips.test.low)^2) #test MSE is 20 --> same as first model
 plot(yhat.low-trips.test.low) #centered around 0
+importance(flow.low.best) # most important are total.start, bikelane/tstop distnace, District
+varImpPlot(flow.low.best)
