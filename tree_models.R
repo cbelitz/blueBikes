@@ -4,7 +4,30 @@
 library(randomForest)
 library(gbm)
 
-# remove missing values
+cross_validate_flow = function(m.values, i.values, dataset, data.subset, data.test) {
+  all_err = list()
+  j = 1
+  for (m in m.values) {
+    # create an empty vector for the errors
+    errors = vector(mode="list")
+    for (i in i.values) {
+      set.seed(1)
+      rf.trips = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
+                              data=dataset,
+                              subset=data.subset,
+                              mtry=m,
+                              ntree=i)
+      yhat.rf = predict(rf.trips, newdata=dataset[-data.subset,])
+      errors = c(errors, mean((yhat.rf-data.test)^2))
+    }
+    all_err[j] = list(errors)
+    j = j + 1
+  }
+  return (all_err)
+}
+
+  
+  # remove missing values
 clean_trips = na.omit(trips)
 
 # get training set
@@ -34,27 +57,12 @@ varImpPlot(rf.trips)  # most important is start, t/bikelanedist, total.docks
 # do cross-validation for best mtry and ntree
 # set m values for p, p/2 and sqRoot of p
 # subtract one from number of columns to account for outcome variable
-clean_trips$weekdayend = as.character(clean_trips$weekdayend)
-m.values = c(9, floor(9/2), floor(9^(1/2)))
-all_err1 = list()
-j = 1
-
-for (m in m.values) {
-  # create an empty vector for the errors
-  errors = vector(mode="list")
-  for (i in seq(10, 100, by=10)) {
-    set.seed(1)
-    rf.trips = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
-                            data=clean_trips,
-                            subset=train,
-                            mtry=m,
-                            ntree=i)
-    yhat.rf = predict(rf.trips, newdata=clean_trips[-train,])
-    errors = c(errors, mean((yhat.rf-trips.test)^2))
-  }
-  all_err1[j] = list(errors)
-  j = j + 1
-}
+all_err1 = cross_validate_flow(c(9, floor(9/2), floor(9^(1/2))),
+                               seq(10, 100, by=10),
+                               clean_trips,
+                               train,
+                               trips.test
+)
 
 x = seq(1, 10)
 x = x*10
@@ -65,6 +73,8 @@ lines(x, all_err1[[1]])
 lines(x, all_err1[[2]], col="red")
 lines(x, all_err1[[3]], col="green")
 legend(x="topright", legend=c("m=p", "m=p/2", expression(m==sqrt(p))), fill=c("black", "red", "green"))
+
+
 
 # m=p=9 performs similarly to m=3 so we will use that since it is faster. It looks like it improves all the way up to 100 trees
 set.seed(1)
@@ -202,4 +212,66 @@ plot(yhat.boost-starts.centered.test) #now centered around 0
 # overall this is slightly better than linear model without names
 
 
+########################
+#### RF by Activity ####
+########################
+
 ### let's see if we can predict starts on "high" usage stations only
+high = subset(clean_trips, clean_trips$activity_class=="high")
+medium = subset(clean_trips, clean_trips$activity_class=="medium")
+low = subset(clean_trips, clean_trips$activity_class=="low")
+
+# check that this worked as expected
+nrow(clean_trips)
+nrow(high) + nrow(medium) + nrow(low)
+
+### Random forests for high alone
+set.seed(1)
+train_high = sample(1:nrow(high), nrow(high)*0.75)
+trips.test.high=high[-train_high ,"flow"]
+
+set.seed(1)
+flow.high = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
+                        data=high,
+                        subset=train_high,
+                        mtry=6,
+                        ntree=25)
+
+
+#predict on test set for error
+set.seed(1)
+yhat.boost=predict(flow.high, newdata=high[-train_high,])
+mean((yhat.boost-trips.test.high)^2) #test MSE is 841 --> not ideal but could be worse
+plot(yhat.boost-trips.test.high) #not super centered around 0
+
+# cross-validation
+all_err.high = cross_validate_flow(c(9, floor(9/2), floor(9^(1/2))),
+                                   seq(10, 100, by=10),
+                                   high,
+                                   train_high,
+                                   trips.test.high
+)
+
+x = seq(1, 10)
+x = x*10
+plot(x, all_err.high[[1]], xlab="Number of Trees", ylab="Test Set MSE", ylim=c(700, 1000), main="CV for RF for Starts")
+points(x, all_err.high[[2]], col="red")
+points(x, all_err.high[[3]], col="green")
+lines(x, all_err.high[[1]])
+lines(x, all_err.high[[2]], col="red")
+lines(x, all_err.high[[3]], col="green")
+legend(x="topright", legend=c("m=p", "m=p/2", expression(m==sqrt(p))), fill=c("black", "red", "green"))
+
+# best model
+set.seed(1)
+flow.high = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
+                         data=high,
+                         subset=train_high,
+                         mtry=floor(9/2),
+                         ntree=80)
+#predict on test set for error
+set.seed(1)
+yhat.high=predict(flow.high, newdata=high[-train_high,])
+mean((yhat.high-trips.test.high)^2) #test MSE is 749 --> better than first model
+plot(yhat.high-trips.test.high) #nore centered around 0 with some outliers
+
