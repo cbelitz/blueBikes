@@ -12,7 +12,7 @@ fig_caption: yes
 
 
 # set global plot size options so they look better 
-knitr::opts_chunk$set(fig.width=8, fig.height=4, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(fig.width=8, fig.height=4, echo = FALSE, warning=FALSE, message=FALSE)
 
 # Call libraries
 
@@ -49,7 +49,7 @@ In addition to the ride data, we are including the following external data sourc
 
 During exploratory data analysis, we plotted total rides by day of week (Figure \ref{fig:figweekdayend} below) and discovered two things. First, there is a pattern of higher total rides on weekdays versus weekends. We can recode the day of week predictor to a weekend/weekday factor to reduce the dimensionality. Second, Monday Sept 2 appears to be an outlier due to the federal holiday Labor Day.
 
-```{r figweekdayend, echo = FALSE, warning=FALSE, message=FALSE,fig.cap="\\label{fig:figweekdayend}Rides by Date"}
+```{r figweekdayend, fig.cap="\\label{fig:figweekdayend}Rides by Date"}
 
 tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
 trips <- read.csv("data/trips_per_day_09_19.csv", colClasses = tripClasses)
@@ -84,9 +84,9 @@ rm(trips)
 
 **RQ3:** Can we interpret our results?
 
-# Classifying Stations
+# RQ1: Classifying Stations
 
-We wanted to classify the stations into three bins based on their daily average rental starts. We used K-means clustering algorithm to assign each station an activity level classification of high, medium, or low. These values aid in interpreting plots, but they can also be used in the previous methods as a way to reduce the high dimensionality of one-hot encoded name variables, keeping in mind that these classifications are derived from ride starts, therefore circular in predicting ride starts.
+We wanted to classify the stations into three bins based on their daily average rental starts. We used K-means clustering algorithm to assign each station an activity level classification of high, medium, or low. These values aid in interpreting plots, but they can also be used in the later methods as a way to reduce the high dimensionality of one-hot encoded name variables, keeping in mind that these classifications are derived from ride starts, therefore circular in predicting ride starts.
 
 In Figure \ref{fig:figkmeans} below, the stratified bands of color demonstrate how the K-means algorithm grouped these observations according to their activity level.
 
@@ -182,3 +182,5 @@ PHIL AND CLARA
 # Discussion and Conclusion
 
 PHIL AND CLARA
+
+# Final note about collaboration
