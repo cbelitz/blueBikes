@@ -2,7 +2,7 @@
 
 
 library(tidyverse)
-
+library(leaps)
 
 # READ in the trips by station, day data
 # tripClasses is going to force-read the data into R data types that I want them to be
@@ -132,25 +132,68 @@ ggplot(data = dailyz, aes(date, avgz, colour = weekdayend)) +
 lm_precip <- lm(daily$starts ~ daily$Precipitation)
 summary(lm_precip)
 
-plot(daily$Precipitation,daily$starts)
-abline(lm_precip)
-plot(lm_precip)
+#plot(daily$Precipitation,daily$starts)
+#abline(lm_precip)
+#plot(lm_precip)
+
+ggplot(data = daily, aes(Precipitation,starts)) +
+  geom_point(size =3) +
+  geom_abline(slope = coef(lm_precip)[[2]], intercept = coef(lm_precip)[[1]], color = "red") +
+  ggtitle("Daily Bluebike Rentals by Precipitation (Daily Total)")
 
 
 # Does the Average Temperature matter?
 
   ## Doesn't seem to (visually). Also thinking, in September the TempAvg ran from 57 to 78. All rideable temperatures.
   ## We may not notice a gradient on this dataset. Should we be looking at the whole year?
-plot(daily$TempAvg,daily$starts)
+
 plot(dailyz$TempAvg,dailyz$avgz)
 
-lm_avgtemp <- lm(daily$TempAvg,)
+lm_avgtemp <- lm(daily$starts ~ daily$TempAvg)
+plot(daily$TempAvg,daily$starts)
+abline(lm_avgtemp)
+
+ggplot(data = daily, aes(TempAvg,starts)) +
+  geom_point(size =3) +
+  geom_abline(slope = coef(lm_avgtemp)[[2]], intercept = coef(lm_avgtemp)[[1]], color = "red") +
+  ggtitle("Daily Bluebike Rentals by Temperature (Daily Average)")
 
 # What about distance to T Stops and Bike Lanes?
 
-plot(tstopdist,flow) # Is there overlap? Like, T-Stops are designed around more people. More people = more potential riders
+plot(tstopdist,total.start) # Is there overlap? Like, T-Stops are designed around more people. More people = more potential riders
+plot(bikelanedist,total.start)
+plot(tstopdist,flow) 
 plot(bikelanedist,flow)
 
+ggplot(data = trips, aes(tstopdist, total.start, colour = activity_class)) +
+  geom_point(size = 1) +
+  geom_abline(intercept = 0, slope = 0, size = 1) +
+  ggtitle("Total Starts by Distance to T-Stop") +
+  xlab("Distance to T-Stop (meters)") +
+  ylab("Total Starts")
+
+ggplot(data = trips, aes(bikelanedist, total.start, colour = activity_class)) +
+  geom_point(size = 1) +
+  geom_abline(intercept = 0, slope = 0, size = 1) +
+  ggtitle("Total Starts by Distance to Bike Lane") +
+  xlab("Distance to Bike Lane (meters)") +
+  ylab("Total Starts") +
+  xlim(0, 4000)
+
+ggplot(data = trips, aes(tstopdist, flow, colour = activity_class)) +
+  geom_point(size = 1) +
+  geom_abline(intercept = 0, slope = 0, size = 1) +
+  ggtitle("Flow by Distance to T-Stop") +
+  xlab("Distance to T-Stop (meters)") +
+  ylab("Flow")
+
+ggplot(data = trips, aes(bikelanedist, flow, colour = activity_class)) +
+  geom_point(size = 1) +
+  geom_abline(intercept = 0, slope = 0, size = 1) +
+  ggtitle("Flow by Distance to Bike Lane") +
+  xlab("Distance to Bike Lane (meters)") +
+  ylab("Flow") +
+  xlim(0,4000)
 
 # Flow by Activity Class
 # Using median
@@ -189,7 +232,7 @@ train.v <- sample(nrow(clean_trips), nrow(clean_trips) * .75, replace = FALSE)
 
 ### LM STARTS ###
 # CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for STARTS
-ctrips.predictors.start <- clean_trips[,c(2:3,5:8,10:12,19)]
+ctrips.predictors.start <- clean_trips[,c(2:3,5:8,10:12,14,19)]
 
 # TRAIN STARTS
 lm_starts <- lm(total.start ~ ., data = ctrips.predictors.start[train.v,-5]) # -5 in the data columns removes Name.
@@ -200,7 +243,7 @@ summary(lm_starts) # R^2 with names: 0.89. without names: 0.24
 ### LM FLOW ###
 # CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for FLOW
 # ... actually I think they are the same -- the response variable is pulled out and we are left with the rest
-ctrips.predictors.flow <- clean_trips[,c(2:3,5:8,10:12,19)]
+ctrips.predictors.flow <- clean_trips[,c(2:3,5:8,10:12,14,19)]
 
 # TRAIN FLOW
 lm_flow <- lm(flow ~ ., data = ctrips.predictors.flow[train.v,]) # -5 in the data columns removes Name.
@@ -221,3 +264,43 @@ pred.flow.MSE <- mean((pred.flow - ctrips.predictors.start$total.start[-train.v]
 pred.flow.MSE
 # MSE with names: 3682.01
 # MSE without names: 3590.09
+
+ggplot(data = ctrips.predictors.start[-train.v,], aes(total.start, pred.starts)) +
+  geom_point(size = 2) +
+  geom_abline(slope = coef(lm_starts)[[2]], intercept = coef(lm_starts)[[1]], color = "red") +
+  ggtitle("Predicting Total Starts (without Names)") +
+  xlab("Actual Starts") +
+  ylab("Predicted Starts")
+
+
+
+### SUBSET SELECTION
+# Best selection set too large
+regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors.start[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
+full.sum.starts <- summary(regfit.full)
+names(full.sum.starts)
+
+# Plot the adjustments to help choose the best predictors
+par(mfrow=c(2,2))
+
+# Plot RSS
+plot(full.sum.starts$rss, xlab = "Number of variables", ylab = "RSS", type = "l")
+starts.min.rss <- which.min(full.sum.starts$rss) # Duh, this will always be the max number of parameters!!
+points(starts.min.rss,full.sum.starts$rss[starts.min.rss], col = "red", cex = 2, pch = 20)
+
+# Plot Adjusted R^2
+plot(full.sum.starts$adjr2, xlab = "Number of variables", ylab = "Adjusted R^2", type = "l")
+starts.max.adjr <- which.max(full.sum.starts$adjr2)
+points(starts.max.adjr,full.sum.starts$adjr2[starts.max.adjr], col = "red", cex = 2, pch = 20)
+
+# Plot Cp
+plot(full.sum.starts$cp, xlab = "Number of variables", ylab = "Cp", type = "l")
+starts.min.cp <- which.min(full.sum.starts$cp)
+points(starts.min.cp,full.sum.starts$cp[starts.min.cp], col = "red", cex = 2, pch = 20)
+
+# Plot BIC
+plot(full.sum.starts$bic, xlab = "Number of variables", ylab = "BIC", type = "l")
+starts.min.bic <- which.min(full.sum.starts$bic)
+points(starts.min.bic,full.sum.starts$bic[starts.min.bic], col = "red", cex = 2, pch = 20)
+
+head(regfit.full$xnames[regfit.full$vorder])
