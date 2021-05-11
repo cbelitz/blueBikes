@@ -119,18 +119,20 @@ trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), 
 
 ## Tree Models
 
+CLARA
 
 ## Support Vector Machines
 
+CLARA
 
 ## Local Regression
 
-
+CLARA
 
 
 # Interpreting Results
 
-
+PHIL AND CLARA
 
 # Classifying Stations
 
@@ -140,7 +142,6 @@ In Figure \ref{fig:figkmeans} below, the stratified bands of color demonstrate h
 
 ```{r echo = FALSE, warning=FALSE, message=FALSE}
 # ^^ 100 words
-library(tidyverse)
 
 # READ in the trips by station, day data
 tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
@@ -179,3 +180,4 @@ levels(temp$activity_class) <- c("low", "medium", "high")
 
 # Discussion and Conclusion
 
+PHIL AND CLARA
