@@ -322,10 +322,18 @@ The best results for flow so far are superior to those found in the linear model
 
 Cross-Validation was also performed for these models, but the charts are omitted here. Instead, we will present only the results for the best models for each activity class.
 
-MSE for the high flow data is now much higher (768), while medium is similar but larger (62), and low (21) flow is much smaller. This makes sense given that "low" is the largest activity class, therefore lowering the test error overall when all classes are considered together. Overall, breaking modeling each activity class individually does not dramatically affect which predictors are most important. Though the exact order may change, the total number of docks and starts (measures of use) and T-stop and bike lane distances (measures of remoteness) are the most important factors. The District and whether it is a weekend jump around a bit in importance, while weather data has the smallest impact for all activity classes.
+MSE for the high flow data is now much higher (768), while medium is similar but larger (62), and low (21) flow is much smaller. This makes sense given that "low" is the largest activity class, therefore lowering the test error overall when all classes are considered together. Overall, breaking modeling each activity class individually does not dramatically affect which predictors are most important. Though the exact order may change, the total number of docks and starts (measures of use) and T-stop and bike lane distances (measures of remoteness) are the most important factors. The District and whether it is a weekend jump around a bit in importance, while weather data has the smallest impact for all activity classes. The results were similar for starts when broken out by activity class.
 
-```{r figImportancePlots}
-include_graphics(c("images/flow_high_importance.png","images/flow_medium_importance.png", "images/flow_low_importance.png"))
+```{r figImportancePlotsHigh, out.width="80%", fig.cap="\\label{fig:figImportancePlotsHigh}Importance Plot for High Flow"}
+include_graphics(c("images/flow_high_importance.png"))
+```
+
+```{r figImportancePlotsMedium, out.width="80%", fig.cap="\\label{fig:figImportancePlotsMedium}Importance Plot for Medium Flow"}
+include_graphics(c("images/flow_medium_importance.png"))
+```
+
+```{r figImportancePlotsLow, out.width="80%", fig.cap="\\label{fig:figImportancePlotsLow}Importance Plot for Low Flow"}
+include_graphics(c("images/flow_low_importance.png"))
 ```
 
 ## Support Vector Machines
@@ -334,8 +342,7 @@ CLARA
 
 ## Local Regression
 
-CLARA
-
+Because linear regression tended not to perform well at the extremes, we thought local regression might be a good approach. But, because the most important factor tended to be name, which is categorical and highly multi-dimensional, it was not a good candidate for things like local regression. None of the models we tried for local regression were superior to other non-linear approaches like trees or SVM.
 
 # RQ3: Interpreting Results
 
