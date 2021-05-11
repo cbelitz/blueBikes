@@ -264,12 +264,12 @@ trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), 
 
 # remove missing values
 clean_trips = na.omit(trips)
-rm(trips) #cleanup
 
-# get training set
+# get training sets
 set.seed(1)
-train = sample(1:nrow(clean_trips), nrow(clean_trips)*0.8)
+train = sample(1:nrow(clean_trips), nrow(clean_trips)*0.75)
 trips.test=clean_trips[-train ,"flow"]
+starts.test = clean_trips[-train ,"total.start"]
 
 # best flow
 set.seed(1)
@@ -281,11 +281,9 @@ rf.trips.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+t
                         importance=TRUE)
 set.seed(1)
 yhat.rf.best = predict(rf.trips.best, newdata=clean_trips[-train,])
-sprintf("Mean squared error on the test data for flow is %f",mean((yhat.rf.2-trips.test)^2)) #test MSE is 51, so on average off by ~11.5 (slightly better than initial model)
+sprintf("Mean squared error on the test data for flow is %f",mean((yhat.rf.best-trips.test)^2)) #test MSE is 47, so on average off by ~11.5 (slightly better than initial model)
 # plot(yhat.rf.2-trips.test) #no pattern to the residual, which is good
 # varImpPlot(rf.trips.2, "Random Forest Importance -- All Activity Classes")
-rm(rf.trips.best)
-rm(yhat.rf.best)
 
 # best starts
 set.seed(1)
@@ -295,17 +293,59 @@ rf.starts.best = randomForest(total.start~weekdayend+District+Total.docks+bikela
                          mtry=8,
                          ntree=60)
 yhat.starts = predict(rf.starts.best, newdata=clean_trips[-train,])
-sprintf("Mean squared error on the test data for flow is %f", mean((yhat.rf-starts.test)^2)) #test MSE is 151, so on average off by 12 (better than SVM)
+sprintf("Mean squared error on the test data for flow is %f", mean((yhat.starts-starts.test)^2)) #test MSE is 158, so on average off by 12 (better than SVM)
 # importance(rf.starts.best)
 # varImpPlot(rf.starts.best)
 # summary(rf.starts.best)
 
-rm(clean_trips)
-rm(rf.starts.best)
-rm(yhat.starts)
+rm(list=ls())
 ```
 
-The best results for flow so far are superior to those found in the linear model. 
+The best results for flow so far are superior to those found in the linear model, with MSE of 47 for flow and 158 for starts. We now want to see if we can get superior results by building a model for each activity level. We can also compare the most important predictors for the models created at each level to see if it varies by activity level. 
+
+Cross-Validation was also performed for these models, but the charts are omitted here. Instead, we will present only the results for the best models for each activity class.
+```{r}
+library(randomForest)
+library(gbm)
+
+# READ in the trips by station, day data
+# tripClasses is going to force-read the data into R data types that I want them to be
+tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
+trips <- read.csv("data/trips_per_day_09_19.csv", colClasses = tripClasses)
+rm(tripClasses) #cleanup environment
+
+# Categorize weekday/weekend
+trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), "weekend", "weekday"))
+
+# remove missing values
+clean_trips = na.omit(trips)
+
+# get data for each class
+high = subset(clean_trips, clean_trips$activity_class=="high")
+medium = subset(clean_trips, clean_trips$activity_class=="medium")
+low = subset(clean_trips, clean_trips$activity_class=="low")
+
+### Random forests for high alone
+set.seed(1)
+train_high = sample(1:nrow(high), nrow(high)*0.75)
+trips.test.high=high[-train_high ,"flow"]
+
+set.seed(1)
+flow.high.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
+                         data=high,
+                         subset=train_high,
+                         mtry=floor(9/2),
+                         ntree=80,
+                         importance=TRUE)
+#predict on test set for error
+set.seed(1)
+yhat.high=predict(flow.high.best, newdata=high[-train_high,])
+mean((yhat.high-trips.test.high)^2) #test MSE is 749 --> better than first model
+varImpPlot(flow.high.best) # most important are docks, start, bike/t distance
+
+```
+
+
 
 ## Support Vector Machines
 
