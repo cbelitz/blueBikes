@@ -8,10 +8,7 @@ fig_caption: yes
 
 ```{r echo = FALSE, warning=FALSE, message=FALSE}
 
-# ^^ the echo = FALSE is a useful parameter; it will prevent code blocks from being shown in the report. We may want to use this frequently.
-
-
-# set global plot size options so they look better 
+# set global plot size options so they look better; also: echo = FALSE! now default! R won't show on PDF unless we set to true
 knitr::opts_chunk$set(fig.width=8, fig.height=4, echo = FALSE, warning=FALSE, message=FALSE)
 
 # Call libraries
@@ -90,7 +87,7 @@ We wanted to classify the stations into three bins based on their daily average 
 
 In Figure \ref{fig:figkmeans} below, the stratified bands of color demonstrate how the K-means algorithm grouped these observations according to their activity level.
 
-```{r echo = FALSE, warning=FALSE, message=FALSE}
+```{r}
 # ^^ 100 words
 
 # READ in the trips by station, day data
@@ -113,7 +110,7 @@ km.out = kmeans(avg_daily_rides_per_stn$Trips, 3 , nstart = 20)
 ```
 
 
-```{r figkmeans, echo=FALSE, fig.width=7,fig.height=6,fig.cap="\\label{fig:figkmeans}K Means"}
+```{r figkmeans, fig.cap="\\label{fig:figkmeans}K Means"}
 ggplot(data = avg_daily_rides_per_stn, aes(id, Trips, colour = factor(km.out$cluster))) +
   scale_color_discrete(labels = c('low','medium','high')) +
   labs(color = "Activity Class") +
@@ -127,35 +124,117 @@ levels(temp$activity_class) <- c("low", "medium", "high")
 
 ```
 
-# Predicting Usage and Flow
+# RQ2: Predicting Usage and Flow
 
 ## Linear Model
 
 PHIL -- 
 
-```{r echo = FALSE, warning=FALSE, message=FALSE}
-
+```{r}
 # READ in the trips by station, day data
 # tripClasses is going to force-read the data into R data types that I want them to be
 tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
 trips <- read.csv("data/trips_per_day_09_19.csv", colClasses = tripClasses)
 rm(tripClasses) #cleanup environment
 
-#####################
-### ADD VARIABLES ###
-#####################
-
-### NORMALIZE START DATA BY STATION - CALC Z SCORE
-# Calc the Z score of the trips per day, by monthly average for that station
-# The purpose of this (I think) is to know, for a given station, how many trips is that relative to the std dev of that station
-# Because it is hard to compare total trips when certain stations have SOOOO many trips
-trips$ztrips <- ave(trips$total.start, trips$id, FUN=scale)
-
 ### RECLASSIFY DAY OF WEEK AS WEEKDAY or WEEKEND
 # Categorize weekday/weekend
 trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), "weekend", "weekday"))
 
+```
 
+```{r}
+############################
+### MODELING, PREDICTION ###
+############################
+library(leaps)
+
+# REMOVE NAs from TRIPS
+clean_trips <- na.omit(trips)
+
+# SELECT TRAINING DATA
+set.seed(517)
+# Create a vector for training, sampling 75% (or .75) of the dataset
+train.v <- sample(nrow(clean_trips), nrow(clean_trips) * .75, replace = FALSE)
+
+### LM STARTS ###
+# CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for STARTS
+ctrips.predictors.start <- clean_trips[,c(2:3,5:8,10:12,14,19)]
+
+# TRAIN STARTS
+lm_starts <- lm(total.start ~ ., data = ctrips.predictors.start[train.v,-5]) # -5 in the data columns removes Name.
+summary(lm_starts) # R^2 with names: 0.89. without names: 0.24
+#plot(lm1)
+
+
+### LM FLOW ###
+# CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for FLOW
+# ... actually I think they are the same -- the response variable is pulled out and we are left with the rest
+ctrips.predictors.flow <- clean_trips[,c(2:3,5:8,10:12,14,19)]
+
+# TRAIN FLOW
+lm_flow <- lm(flow ~ ., data = ctrips.predictors.flow[train.v,]) # -5 in the data columns removes Name.
+summary(lm_flow) # R^2 with names: 0.37. without names: 0.03
+
+
+
+### PREDICTING STARTS ###
+pred.starts <- predict(lm_starts, ctrips.predictors.start[-train.v,])
+pred.starts.MSE <- mean((pred.starts - ctrips.predictors.start$total.start[-train.v])^2)
+pred.starts.MSE
+# MSE with names: 237.6147
+# MSE without names: 1460.618
+
+### PREDICTING FLOW ###
+pred.flow <- predict(lm_flow, ctrips.predictors.start[-train.v,])
+pred.flow.MSE <- mean((pred.flow - ctrips.predictors.start$total.start[-train.v])^2)
+pred.flow.MSE
+# MSE with names: 3682.01
+# MSE without names: 3590.09
+
+ggplot(data = ctrips.predictors.start[-train.v,], aes(total.start, pred.starts)) +
+  geom_point(size = 2) +
+  geom_abline(slope = coef(lm_starts)[[2]], intercept = coef(lm_starts)[[1]], color = "red") +
+  ggtitle("Predicting Total Starts (without Names)") +
+  xlab("Actual Starts") +
+  ylab("Predicted Starts")
+
+
+
+### SUBSET SELECTION
+# Best selection set too large
+regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors.start[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
+full.sum.starts <- summary(regfit.full)
+names(full.sum.starts)
+
+# Plot the adjustments to help choose the best predictors
+par(mfrow=c(2,2))
+
+# Plot RSS
+plot(full.sum.starts$rss, xlab = "Number of variables", ylab = "RSS", type = "l")
+starts.min.rss <- which.min(full.sum.starts$rss) # Duh, this will always be the max number of parameters!!
+points(starts.min.rss,full.sum.starts$rss[starts.min.rss], col = "red", cex = 2, pch = 20)
+
+# Plot Adjusted R^2
+plot(full.sum.starts$adjr2, xlab = "Number of variables", ylab = "Adjusted R^2", type = "l")
+starts.max.adjr <- which.max(full.sum.starts$adjr2)
+points(starts.max.adjr,full.sum.starts$adjr2[starts.max.adjr], col = "red", cex = 2, pch = 20)
+
+# Plot Cp
+plot(full.sum.starts$cp, xlab = "Number of variables", ylab = "Cp", type = "l")
+starts.min.cp <- which.min(full.sum.starts$cp)
+points(starts.min.cp,full.sum.starts$cp[starts.min.cp], col = "red", cex = 2, pch = 20)
+
+# Plot BIC
+plot(full.sum.starts$bic, xlab = "Number of variables", ylab = "BIC", type = "l")
+starts.min.bic <- which.min(full.sum.starts$bic)
+points(starts.min.bic,full.sum.starts$bic[starts.min.bic], col = "red", cex = 2, pch = 20)
+
+head(regfit.full$xnames[regfit.full$vorder])
+```
+```{r}
+# Linear Modeling environment cleanup
+rm(list=ls())
 ```
 
 
@@ -172,7 +251,7 @@ CLARA
 CLARA
 
 
-# Interpreting Results
+# RQ3: Interpreting Results
 
 PHIL AND CLARA
 
@@ -183,4 +262,10 @@ PHIL AND CLARA
 
 PHIL AND CLARA
 
+Full project source code available at: https://github.com/cbelitz/blueBikes
+
 # Final note about collaboration
+
+-once the rest of the document is complete, a space for each of us to reflect on these questions:
+How did your team work together? Did team members work together on pieces of the
+project, or split the project into different topics for different team members?
