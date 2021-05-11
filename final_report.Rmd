@@ -12,11 +12,11 @@ fig_caption: yes
 
 
 # set global plot size options so they look better in Word (note to selves: We are not outputting to Word, so maybe we don't want to keep these global plot settings? I just remember knitr making half-sized graphics, so this bumped them up to be a bit larger)
-knitr::opts_chunk$set(fig.width=8, fig.height=6, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(fig.width=8, fig.height=4, warning=FALSE, message=FALSE)
 
 # Call libraries
 
-#library(tidyverse)  # I think we want tidyverse? May take out if not needed, or if conflicts with other functions
+library(tidyverse)  # I think we want tidyverse? May take out if not needed, or if conflicts with other functions
 
 # Maybe for the other functions, we can just call them where they are needed.
 
@@ -33,6 +33,8 @@ In this report, we will analyze bike usage through the lens of possible stakehol
 
 # Data Sources and Processing
 
+## Data Sources
+
 Boston Bluebikes publishes their anonymized and cleaned bike rental data online. The cleaned data has removed trips that are taken by staff as they service and inspect the system; and any trips that were below 60 seconds in length. Individual ride data was grouped and summarized by station and day.
 
 In addition to the ride data, we are including the following external data sources:
@@ -42,6 +44,36 @@ In addition to the ride data, we are including the following external data sourc
 * Distance to T stop: Because bike shares are part of city-wide infrastructure, we may expect popular stations to be located at or near public transit stops.
 
 * Distance to bike lane: The proximity to bike lanes may influence the popularity of stations. We can calculate distance to the nearest bike lane from a given station.
+
+## Data Processing
+
+During exploratory data analysis, we plotted total rides by day of week (Figure \ref{fig:figweekdayend} below) and discovered two things. First, there is a pattern of higher total rides on weekdays versus weekends. We can recode the day of week predictor to a weekend/weekday factor to reduce the dimensionality. Second, Monday Sept 2 appears to be an outlier due to the federal holiday Labor Day.
+
+```{r figweekdayend, echo = FALSE, warning=FALSE, message=FALSE,fig.cap="\\label{fig:figweekdayend}Rides by Date"}
+
+tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
+trips <- read.csv("data/trips_per_day_09_19.csv", colClasses = tripClasses)
+rm(tripClasses) #cleanup environment
+# Categorize weekday/weekend
+trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), "weekend", "weekday"))
+attach(trips)
+
+daily <- trips %>% group_by(date, weekday, weekdayend, Precipitation, TempAvg) %>% summarize(starts = sum(total.start), ends = sum(total.end))
+
+# PLOT: Daily Starts (Rides) by Date
+#plot(daily$date,daily$starts)
+ggplot(data = daily, aes(date, starts, colour = weekdayend)) +
+  geom_point(size = 3) +
+  geom_abline(intercept = 0, slope = 0, size = 1) +
+  ggtitle("Total Rides by Date") +
+  xlab("Date") +
+  ylab("Total Rides")
+
+detach(trips)
+rm(daily)
+rm(trips)
+
+```
 
 
 # Research Questions
@@ -104,7 +136,7 @@ trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), 
 
 We wanted to classify the stations into three bins based on their daily average rental starts. We used K-means clustering algorithm to assign each station an activity level classification of high, medium, or low. These values aid in interpreting plots, but they can also be used in the previous methods as a way to reduce the high dimensionality of one-hot encoded name variables, keeping in mind that these classifications are derived from ride starts, therefore circular in predicting ride starts.
 
-In Figure \ref{fig:figs} below, the stratified bands of color demonstrate how the K-means algorithm grouped these observations according to their activity level.
+In Figure \ref{fig:figkmeans} below, the stratified bands of color demonstrate how the K-means algorithm grouped these observations according to their activity level.
 
 ```{r echo = FALSE, warning=FALSE, message=FALSE}
 # ^^ 100 words
@@ -130,7 +162,7 @@ km.out = kmeans(avg_daily_rides_per_stn$Trips, 3 , nstart = 20)
 ```
 
 
-```{r figs, echo=FALSE, fig.width=7,fig.height=6,fig.cap="\\label{fig:figs}K Means"}
+```{r figkmeans, echo=FALSE, fig.width=7,fig.height=6,fig.cap="\\label{fig:figkmeans}K Means"}
 ggplot(data = avg_daily_rides_per_stn, aes(id, Trips, colour = factor(km.out$cluster))) +
   scale_color_discrete(labels = c('low','medium','high')) +
   labs(color = "Activity Class") +
@@ -143,7 +175,6 @@ names(temp) <- c("id","activity_class")
 levels(temp$activity_class) <- c("low", "medium", "high")
 
 ```
-
 
 
 # Discussion and Conclusion
