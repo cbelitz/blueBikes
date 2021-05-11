@@ -337,8 +337,28 @@ include_graphics(c("images/flow_low_importance.png"))
 ```
 
 ## Support Vector Machines
+```{r}
+library(e1071)
 
-CLARA
+# READ in the trips by station, day data
+# tripClasses is going to force-read the data into R data types that I want them to be
+tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
+trips <- read.csv("data/trips_per_day_09_19.csv", colClasses = tripClasses)
+rm(tripClasses) #cleanup environment
+
+# Categorize weekday/weekend
+trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), "weekend", "weekday"))
+
+# remove missing values
+clean_trips = na.omit(trips)
+
+# get training set
+set.seed(1)
+train = sample(1:nrow(clean_trips), nrow(clean_trips)*.75)
+trips.test=clean_trips[-train ,"flow"]
+
+```
+
 
 ## Local Regression
 
