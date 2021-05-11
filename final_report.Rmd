@@ -321,48 +321,12 @@ rm(list=ls())
 The best results for flow so far are superior to those found in the linear model, with MSE of 47 for flow and 158 for starts. We now want to see if we can get superior results by building a model for each activity level. We can also compare the most important predictors for the models created at each level to see if it varies by activity level. 
 
 Cross-Validation was also performed for these models, but the charts are omitted here. Instead, we will present only the results for the best models for each activity class.
-```{r}
-library(randomForest)
-library(gbm)
 
-# READ in the trips by station, day data
-# tripClasses is going to force-read the data into R data types that I want them to be
-tripClasses <- c("factor", "Date", "integer", "integer", "integer", "factor", "factor", "factor", "factor", "integer", "numeric", "numeric", "integer", "numeric", "integer", "integer", "numeric","integer","numeric")
-trips <- read.csv("data/trips_per_day_09_19.csv", colClasses = tripClasses)
-rm(tripClasses) #cleanup environment
+MSE for the high flow data is now much higher (768), while medium is similar but larger (62), and low (21) flow is much smaller. This makes sense given that "low" is the largest activity class, therefore lowering the test error overall when all classes are considered together. Overall, breaking modeling each activity class individually does not dramatically affect which predictors are most important. Though the exact order may change, the total number of docks and starts (measures of use) and T-stop and bike lane distances (measures of remoteness) are the most important factors. The District and whether it is a weekend jump around a bit in importance, while weather data has the smallest impact for all activity classes.
 
-# Categorize weekday/weekend
-trips$weekdayend <- as.factor(ifelse(trips$weekday %in% c("Sunday","Saturday"), "weekend", "weekday"))
-
-# remove missing values
-clean_trips = na.omit(trips)
-
-# get data for each class
-high = subset(clean_trips, clean_trips$activity_class=="high")
-medium = subset(clean_trips, clean_trips$activity_class=="medium")
-low = subset(clean_trips, clean_trips$activity_class=="low")
-
-### Random forests for high alone
-set.seed(1)
-train_high = sample(1:nrow(high), nrow(high)*0.75)
-trips.test.high=high[-train_high ,"flow"]
-
-set.seed(1)
-flow.high.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+tstopdist+total.start+TempAvg+WindAvg+Precipitation,
-                         data=high,
-                         subset=train_high,
-                         mtry=floor(9/2),
-                         ntree=80,
-                         importance=TRUE)
-#predict on test set for error
-set.seed(1)
-yhat.high=predict(flow.high.best, newdata=high[-train_high,])
-mean((yhat.high-trips.test.high)^2) #test MSE is 749 --> better than first model
-varImpPlot(flow.high.best) # most important are docks, start, bike/t distance
-
+```{r figImportancePlots}
+include_graphics(c("images/flow_high_importance.png","images/flow_medium_importance.png", "images/flow_low_importance.png"))
 ```
-
-
 
 ## Support Vector Machines
 
