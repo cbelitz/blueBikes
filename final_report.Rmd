@@ -116,11 +116,21 @@ ggplot(data = avg_daily_rides_per_stn, aes(id, Trips, colour = factor(km.out$clu
   labs(color = "Activity Class") +
   geom_point(size = 2) +
   ggtitle("K-Means Clustering to Determine Activity Level")
+```
+
+
+```{r}
+# APPEND THE ACTIVITY LEVEL TO TRIPS
 
 temp <- data.frame(avg_daily_rides_per_stn$id,as.factor(km.out$cluster))
 names(temp) <- c("id","activity_class")
 
 levels(temp$activity_class) <- c("low", "medium", "high")
+
+# DANGER: APPENDING TO SELF; DO NOT RUN MULTIPLE TIMES
+#trips <- merge(trips, temp)
+trips <- merge(trips, temp)
+rm(temp) # cleanup
 
 ```
 
@@ -191,22 +201,29 @@ pred.flow.MSE <- mean((pred.flow - ctrips.predictors.start$total.start[-train.v]
 pred.flow.MSE
 # MSE with names: 3682.01
 # MSE without names: 3590.09
+```
 
+
+```{r figlmpredstarts, fig.cap="\\label{fig:figkmeans}Predicting "}
 ggplot(data = ctrips.predictors.start[-train.v,], aes(total.start, pred.starts)) +
   geom_point(size = 2) +
   geom_abline(slope = coef(lm_starts)[[2]], intercept = coef(lm_starts)[[1]], color = "red") +
   ggtitle("Predicting Total Starts (without Names)") +
   xlab("Actual Starts") +
   ylab("Predicted Starts")
+```
 
 
-
+```{r}
 ### SUBSET SELECTION
 # Best selection set too large
 regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors.start[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
 full.sum.starts <- summary(regfit.full)
 names(full.sum.starts)
+```
 
+
+```{r figlmselect, fig.cap="\\label{fig:figlmselect}K Means"}
 # Plot the adjustments to help choose the best predictors
 par(mfrow=c(2,2))
 
