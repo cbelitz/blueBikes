@@ -42,32 +42,32 @@ plot(trips.test, svr.predict.poly)
 set.seed(1)
 tune.trips = tune(svm, flow~weekday+Name+District+Total.docks+bikelanedist+tstopdist,
                   data=clean_trips[train,],
-                  kernel="radial",
+                  kernel="polynomial",
                   ranges=list(cost=c(0.1, 1, 5, 10),
                               gamma=c(0.001, 0.01, 0.1, 0.5)))
 
 
 tune.trips$best.parameters # cost of 10 and gamma of 0.1
-tune.trips$best.performance #MSE 65
+tune.trips$best.performance #MSE 97
 set.seed(1)
 svr.predict = predict(tune.trips$best.model, newdata=clean_trips[-train,])
-mean((svr.predict-trips.test)^2) #134
+mean((svr.predict-trips.test)^2) #64
 
 
 # do some tuning on radial kernel 
 set.seed(1)
-tune.trips = tune(svm, flow~weekday+Name+District+Total.docks+bikelanedist+tstopdist,
+tune.trips.radial = tune(svm, flow~weekday+Name+District+Total.docks+bikelanedist+tstopdist,
                  data=clean_trips[train,],
                  kernel="radial",
                  ranges=list(cost=c(0.1, 1, 5, 10),
                              gamma=c(0.001, 0.01, 0.1, 0.5)))
 
 
-tune.trips$best.parameters # cost of 10 and gamma of 0.1
-tune.trips$best.performance #MSE 65
+tune.trips.radial$best.parameters # cost of 10 and gamma of 0.1
+tune.trips.radial$best.performance #MSE 97
 set.seed(1)
-svr.predict = predict(tune.trips$best.model, newdata=clean_trips[-train,])
-mean((svr.predict-trips.test)^2) #134
+svr.predict = predict(tune.trips.radial$best.model, newdata=clean_trips[-train,])
+mean((svr.predict-trips.test)^2) #64
 plot(trips.test, svr.predict)
 
 #best is at highest values, so we can run again with a few higher and see if they continue to improve
