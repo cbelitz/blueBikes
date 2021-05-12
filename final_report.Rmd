@@ -101,10 +101,7 @@ rm(tripClasses) #cleanup environment
 # of activity level, so we could have low-medium-high or some such thing? Would we be able to use clustering models for this?
 # This would define an attribute of the station
 
-# Critical question: Is it inappropriate to use k-means on single-vector data? Most of the examples seem to use two-dimensional
-
 set.seed(1)
-#total_daily_rides_per_stn <- trips %>% group_by(id) %>% summarise(Trips = sum(total.start)) # not needed
 avg_daily_rides_per_stn <- trips %>% group_by(id) %>% summarise(Trips = mean(total.start))
 km.out = kmeans(avg_daily_rides_per_stn$Trips, 3 , nstart = 20)
 ```
@@ -207,9 +204,9 @@ pred.flow_withoutName <- predict(lm_flow_withoutName, ctrips.predictors[-train.v
 # MSE without names: 3590.09
 ```
 
-To successfully build a linear model, first we want to explore the independent variables and select the most effective. Because the station names are a factor, best subset selection was too computationally intensive so we proceeded with forward stepwise analysis.
+To successfully build a linear model, first we want to explore the independent variables and select the most effective. Because the station names are a factor, best subset selection was too computationally expensive so we proceeded with forward stepwise analysis. For this analyis, 75% of daily station observations were randomly sampled as the training dataset, and the remaining 25% were used as the test dataset.
 
-```{r echo=FALSE, warning=FALSE, error = FALSE}
+```{r include=FALSE}
 ### SUBSET SELECTION
 # Best selection set too large
 regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
@@ -245,15 +242,17 @@ points(starts.min.bic,full.sum.starts$bic[starts.min.bic], col = "red", cex = 2,
 
 Although The Bayesian Information Criterion (BIC), which more heavily penalizes additional terms, suggested we could use a smaller model, other selection criteria suggested we include all of the variables in the model for increased accuracy. With station names included, the top five most influential variables were: ``r regfit.full$xnames[regfit.full$vorder][2:6]``
 
+Three of these are station names, one is a district (Cambridge), and the other is the distance to the T-Stop.
 
-When using linear regression to predict total starts and station flow, we find that the accuracy of the model depends heavily on whether we include Names or not. Predicting starts with station Name has an R^2 of ``r summary(lm_starts_withName)$r.squared`` and a mean square error of``r pred.starts_withName.MSE``. Without station Name the R^2 increases to ``r summary(lm_starts_withoutName)$r.squared`` and the mean square error to ``r pred.starts_withoutName.MSE``. 
+When using linear regression to predict total starts and station flow, we find that the accuracy of the model depends heavily on whether we include Names or not (as previously demonstrated three of the top five predictors are station names). Predicting starts with station name has an R^2 of ``r summary(lm_starts_withName)$r.squared`` and a mean square error of``r pred.starts_withName.MSE``. Without station name the R^2 increases to ``r summary(lm_starts_withoutName)$r.squared`` and the mean square error to ``r pred.starts_withoutName.MSE``. In Figure \ref{fig:figlmpredstarts}, the plot shows the model slightly underpredicting total starts, as the line has a slope of less than 1.
 
 The linear model did not predict flow well, with an R^2 of ``r summary(lm_flow_withName)$r.squared`` and a mean square error of ``r pred.flow_withName.MSE``. Without names, the R^2 was a dismal ``r summary(lm_flow_withoutName)$r.squared``.
+
 
 ```{r figlmpredstarts, fig.cap="\\label{fig:lmpredstarts}Predicting Starts with Linear Model, including Station Names"}
 ggplot(data = ctrips.predictors[-train.v,], aes(total.start, pred.starts_withName)) +
   geom_point(size = 2) +
-  geom_abline(slope =1, intercept = 0, color = "red") +
+  stat_smooth(method = lm) +
   ggtitle("Predicting Total Starts (with Names)") +
   xlab("Actual Starts") +
   ylab("Predicted Starts")
@@ -344,7 +343,8 @@ include_graphics(c("images/flow_low_importance.png"))
 
 ## Support Vector Machines
 
-After tuning, the best models we found are presented below. We use ony 25% of the data for training in order to allow the model to run in a reasonable amount of time. The best models for flow had a radial kernel with gamma 10 and cost 0.5. The best model for starts had a radial kernel with a gamma of 0.1 and a cost of 20. 
+After tuning, the best models we found are presented below. We use ony 25% of the data for training in order to allow the model to run in a reasonable amount of time. The best models for flow had a radial kernel with gamma 10 and cost 0.5. The best model for starts had a radial kernel with a gamma of 0.1 and a cost of 20.
+
 ```{r}
 library(e1071)
 
@@ -404,9 +404,12 @@ Because the most successful models were decision trees, our results are easily i
 
 
 # Discussion and Conclusion
+
 Because trees performed well on this data, we are able to see how important infrastructure is for predicting bike usage. This data could be used, for example, to argue that increased bike infrastructure leads to increased bike usage, and that bikes are a vital part of a city's general public transit systems. 
 
-We also saw that weather does not vary enough within a month to have a strong effect on the data. We would be curious to see the effect that weather has from month to month, since we imagine that a snowstorm, for example, may decrease ridership.
+We found that station names were helpful in predicting the usage at a given station on a given day using the linear model. This is due in part to the time-series nature of our data, where the usage rate at a station on a given day are temporally linked to the usage on another day in the same month.
+
+We also saw that weather does have a strong effect on the data. For temperature, this is likely because September is a moderate month, in between the heat of summer and the cold of winter. We would be curious to see the effect that seasonal variation and temperature extremes have, since we imagine that a snowstorm, for example, may decrease ridership. Precipitation was low overall in our study data, but even the day with the largest rainfall event (over 1" of precipitation) did not seem to affect ridership.
 
 If we had more time, we would also bring in additional outside data that could help us understand the usage at a more granular level. This could include T usage data, as well as neighborhood information like average income or demographics.
 
