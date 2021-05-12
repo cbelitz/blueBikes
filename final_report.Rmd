@@ -6,7 +6,7 @@ output: pdf_document
 fig_caption: yes
 ---
 
-```{r echo = FALSE, warning=FALSE, message=FALSE}
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=FALSE, include=FALSE}
 
 # set global plot size options so they look better; also: echo = FALSE! now default! R won't show on PDF unless we set to true
 knitr::opts_chunk$set(fig.width=8, fig.height=4, echo = FALSE, warning=FALSE, message=FALSE)
@@ -191,17 +191,17 @@ lm_flow_withoutName <- lm(flow ~ ., data = ctrips.predictors[train.v,-5]) # -5 i
 ### PREDICTING STARTS ###
 pred.starts_withName <- predict(lm_starts_withName, ctrips.predictors[-train.v,])
 pred.starts_withName.MSE <- mean((pred.starts_withName - ctrips.predictors$total.start[-train.v])^2)
-pred.starts_withName.MSE
+#pred.starts_withName.MSE
 # MSE with names: 237.6147
 pred.starts_withoutName <- predict(lm_starts_withoutName, ctrips.predictors[-train.v,])
 pred.starts_withoutName.MSE <- mean((pred.starts_withoutName - ctrips.predictors$total.start[-train.v])^2)
-pred.starts_withoutName.MSE
+#pred.starts_withoutName.MSE
 # MSE without names: 1460.618
 
 ### PREDICTING FLOW ###
 pred.flow_withName <- predict(lm_flow_withName, ctrips.predictors[-train.v,])
 pred.flow_withName.MSE <- mean((pred.flow_withName - ctrips.predictors$total.start[-train.v])^2)
-pred.flow_withName.MSE
+#pred.flow_withName.MSE
 # MSE with names: 3682.01
 pred.flow_withoutName <- predict(lm_flow_withoutName, ctrips.predictors[-train.v,])
 # MSE without names: 3590.09
@@ -209,16 +209,16 @@ pred.flow_withoutName <- predict(lm_flow_withoutName, ctrips.predictors[-train.v
 
 To successfully build a linear model, first we want to explore the independent variables and select the most effective. Because the station names are a factor, best subset selection was too computationally intensive so we proceeded with forward stepwise analysis.
 
-```{r echo=FALSE, error = FALSE}
+```{r echo=FALSE, warning=FALSE, error = FALSE}
 ### SUBSET SELECTION
 # Best selection set too large
 regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
 full.sum.starts <- summary(regfit.full)
-names(full.sum.starts)
+#names(full.sum.starts)
 ```
 
 
-```{r figlmselect, fig.cap="\\label{fig:figlmselect}Choosing the best model"}
+```{r figlmselect, fig.height=6, fig.cap="\\label{fig:figlmselect}Choosing the best model"}
 # Plot the adjustments to help choose the best predictors
 par(mfrow=c(2,2))
 
