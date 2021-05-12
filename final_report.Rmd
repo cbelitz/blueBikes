@@ -209,7 +209,7 @@ pred.flow_withoutName <- predict(lm_flow_withoutName, ctrips.predictors[-train.v
 
 To successfully build a linear model, first we want to explore the independent variables and select the most effective. Because the station names are a factor, best subset selection was too computationally intensive so we proceeded with forward stepwise analysis.
 
-```{r}
+```{r echo=FALSE, error = FALSE}
 ### SUBSET SELECTION
 # Best selection set too large
 regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
@@ -248,9 +248,9 @@ Although The Bayesian Information Criterion (BIC), which more heavily penalizes 
 
 When using linear regression to predict total starts and station flow, we find that the accuracy of the model depends heavily on whether we include Names or not. Predicting starts with station Name has an R^2 of ``r summary(lm_starts_withName)$r.squared`` and a mean square error of``r pred.starts_withName.MSE``. Without station Name the R^2 increases to ``r summary(lm_starts_withoutName)$r.squared`` and the mean square error to ``r pred.starts_withoutName.MSE``. 
 
-The linear model did not predict flow well, with an R^2 of ``r summary(lm_flow_withName)$r.squared`` and a mean square error of``r pred.flow_withName.MSE``. Without names, the R^2 was a dismal ``r summary(lm_flow_withoutName)$r.squared``.
+The linear model did not predict flow well, with an R^2 of ``r summary(lm_flow_withName)$r.squared`` and a mean square error of ``r pred.flow_withName.MSE``. Without names, the R^2 was a dismal ``r summary(lm_flow_withoutName)$r.squared``.
 
-```{r figlmpredstarts, fig.cap="\\label{fig:figkmeans}Predicting Starts with Linear Model, including Station Names"}
+```{r figlmpredstarts, fig.cap="\\label{fig:lmpredstarts}Predicting Starts with Linear Model, including Station Names"}
 ggplot(data = ctrips.predictors[-train.v,], aes(total.start, pred.starts_withName)) +
   geom_point(size = 2) +
   geom_abline(slope =1, intercept = 0, color = "red") +
