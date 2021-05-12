@@ -309,7 +309,7 @@ rf.trips.best = randomForest(flow~weekdayend+District+Total.docks+bikelanedist+t
                         importance=TRUE)
 set.seed(1)
 yhat.rf.best = predict(rf.trips.best, newdata=clean_trips[-train,])
-sprintf("Mean squared error on the test data for flow is %f",mean((yhat.rf.best-trips.test)^2))
+sprintf("Mean squared error on the test data for flow with random forests is %f",mean((yhat.rf.best-trips.test)^2))
 plot(trips.test-yhat.rf.best, ylab="Residuals", main="Residuals for RF Trips")
 
 # best starts
@@ -320,7 +320,7 @@ rf.starts.best = randomForest(total.start~weekdayend+District+Total.docks+bikela
                          mtry=8,
                          ntree=60)
 yhat.starts = predict(rf.starts.best, newdata=clean_trips[-train,])
-sprintf("Mean squared error on the test data for flow is %f", mean((yhat.starts-starts.test)^2)) 
+sprintf("Mean squared error on the test data for flow with random forests is %f", mean((yhat.starts-starts.test)^2)) 
 rm(list=ls())
 ```
 
@@ -344,7 +344,7 @@ include_graphics(c("images/flow_low_importance.png"))
 
 ## Support Vector Machines
 
-After tuning, the best models we found are presented below. We use ony 25% of the data for training in order to allow the model to run in a reasonable amount of time. The best models for flow had a radial kernel with gamma 10 and cost 0.5. The best model for starts had a radial kernel 
+After tuning, the best models we found are presented below. We use ony 25% of the data for training in order to allow the model to run in a reasonable amount of time. The best models for flow had a radial kernel with gamma 10 and cost 0.5. The best model for starts had a radial kernel with a gamma of 0.1 and a cost of 20. 
 ```{r}
 library(e1071)
 
@@ -373,10 +373,9 @@ svr.trips.best = svm(flow~weekdayend+Name+District+Total.docks+bikelanedist+tsto
                 kernel="radial",
                 gamma=10,
                 cost=0.5)
-svr.trips.best
 set.seed(1)
 svr.predict = predict(svr.trips.best, newdata=clean_trips[-train,])
-sprintf("Mean squared error on the test data for flow is %f", mean((svr.predict-trips.test)^2))
+sprintf("Mean squared error on the test data for flow with SVM is %f", mean((svr.predict-trips.test)^2))
 
 # starts with best values from cv
 set.seed(1)
@@ -386,10 +385,9 @@ svr.starts.best = svm(total.start~weekdayend+Name+District+Total.docks+bikelaned
                 kernel="radial",
                 gamma=0.1,
                 cost=20)
-svr.starts.best
 set.seed(1)
 svr.starts.predict = predict(svr.starts.best, newdata=clean_trips[-train,])
-sprintf("Mean squared error on the test data for flow is %f", mean((svr.starts.predict-starts.test)^2))
+sprintf("Mean squared error on the test data for starts with SVM is %f", mean((svr.starts.predict-starts.test)^2))
 plot(svr.starts.predict-starts.test, ylab="Residuals", main="Residuals for SVR Starts")
 rm(list=ls())
 ```
@@ -398,7 +396,7 @@ Because SVM did not do as well as random forests, we chose not to build SVM mode
 
 ## Local Regression
 
-Because linear regression tended not to perform well at the extremes, we thought local regression might be a good approach. But, because the most important factor tended to be name, which is categorical and highly multi-dimensional, it was not a good candidate for things like local regression. None of the models we tried for local regression were superior to other non-linear approaches like trees or SVM.
+Because linear regression tended not to perform well at the extremes, we thought local regression might be a good approach. But, because the most important factor in the linear model tended to be names, which is categorical and highly multi-dimensional, it was not a good candidate for things like local regression. None of the models we tried for local regression were superior to other non-linear approaches like trees or SVM.
 
 # RQ3: Interpreting Results
 
