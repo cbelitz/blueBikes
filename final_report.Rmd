@@ -138,8 +138,6 @@ rm(temp) # cleanup
 
 ## Linear Model
 
-PHIL -- 
-
 ```{r}
 # READ in the trips by station, day data
 # tripClasses is going to force-read the data into R data types that I want them to be
@@ -168,41 +166,43 @@ set.seed(517)
 train.v <- sample(nrow(clean_trips), nrow(clean_trips) * .75, replace = FALSE)
 
 ### LM STARTS ###
-# CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for STARTS
-ctrips.predictors.start <- clean_trips[,c(2:3,5:8,10:12,14,19)]
+# CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER
+ctrips.predictors <- clean_trips[,c(2:3,5:8,10:12,14,19)]
 
 # TRAIN STARTS
-lm_starts <- lm(total.start ~ ., data = ctrips.predictors.start[train.v,-5]) # -5 in the data columns removes Name.
-summary(lm_starts) # R^2 with names: 0.89. without names: 0.24
+lm_starts_withName <- lm(total.start ~ ., data = ctrips.predictors[train.v,])
+lm_starts_withoutName <- lm(total.start ~ ., data = ctrips.predictors[train.v,-5]) # -5 in the data columns removes Name.
+#summary(lm_starts) # R^2 with names: 0.89. without names: 0.24
 #plot(lm1)
 
 
-### LM FLOW ###
-# CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER for FLOW
-# ... actually I think they are the same -- the response variable is pulled out and we are left with the rest
-ctrips.predictors.flow <- clean_trips[,c(2:3,5:8,10:12,14,19)]
-
 # TRAIN FLOW
-lm_flow <- lm(flow ~ ., data = ctrips.predictors.flow[train.v,]) # -5 in the data columns removes Name.
-summary(lm_flow) # R^2 with names: 0.37. without names: 0.03
+lm_flow_withName <- lm(flow ~ ., data = ctrips.predictors[train.v,])
+lm_flow_withoutName <- lm(flow ~ ., data = ctrips.predictors[train.v,-5]) # -5 in the data columns removes Name.
+#summary(lm_flow) # R^2 with names: 0.37. without names: 0.03
 
 
 
 ### PREDICTING STARTS ###
-pred.starts <- predict(lm_starts, ctrips.predictors.start[-train.v,])
-pred.starts.MSE <- mean((pred.starts - ctrips.predictors.start$total.start[-train.v])^2)
-pred.starts.MSE
+pred.starts_withName <- predict(lm_starts_withName, ctrips.predictors[-train.v,])
+pred.starts_withName.MSE <- mean((pred.starts_withName - ctrips.predictors$total.start[-train.v])^2)
+pred.starts_withName.MSE
 # MSE with names: 237.6147
+pred.starts_withoutName <- predict(lm_starts_withoutName, ctrips.predictors[-train.v,])
+pred.starts_withoutName.MSE <- mean((pred.starts_withoutName - ctrips.predictors$total.start[-train.v])^2)
+pred.starts_withoutName.MSE
 # MSE without names: 1460.618
 
 ### PREDICTING FLOW ###
-pred.flow <- predict(lm_flow, ctrips.predictors.start[-train.v,])
-pred.flow.MSE <- mean((pred.flow - ctrips.predictors.start$total.start[-train.v])^2)
+pred.flow <- predict(lm_flow, ctrips.predictors[-train.v,])
+pred.flow.MSE <- mean((pred.flow - ctrips.predictors$total.start[-train.v])^2)
 pred.flow.MSE
 # MSE with names: 3682.01
 # MSE without names: 3590.09
 ```
 
+
+PHIL -- 
 
 ```{r figlmpredstarts, fig.cap="\\label{fig:figkmeans}Predicting "}
 ggplot(data = ctrips.predictors.start[-train.v,], aes(total.start, pred.starts)) +
