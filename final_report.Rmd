@@ -409,7 +409,7 @@ Because trees performed well on this data, we are able to see how important infr
 
 We found that station names were helpful in predicting the usage at a given station on a given day using the linear model. This is due in part to the time-series nature of our data, where the usage rate at a station on a given day are temporally linked to the usage on another day in the same month.
 
-We also saw that weather does have a strong effect on the data. For temperature, this is likely because September is a moderate month, in between the heat of summer and the cold of winter. We would be curious to see the effect that seasonal variation and temperature extremes have, since we imagine that a snowstorm, for example, may decrease ridership. Precipitation was low overall in our study data, but even the day with the largest rainfall event (over 1" of precipitation) did not seem to affect ridership.
+We also saw that weather does not have a strong effect on the data. For temperature, this is likely because September is a moderate month, in between the heat of summer and the cold of winter. We would be curious to see the effect that seasonal variation and temperature extremes have, since we imagine that a snowstorm, for example, may decrease ridership. Precipitation was low overall in our study data, but even the day with the largest rainfall event (over 1" of precipitation) did not seem to affect ridership.
 
 If we had more time, we would also bring in additional outside data that could help us understand the usage at a more granular level. This could include T usage data, as well as neighborhood information like average income or demographics.
 
