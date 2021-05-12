@@ -165,6 +165,11 @@ set.seed(517)
 # Create a vector for training, sampling 75% (or .75) of the dataset
 train.v <- sample(nrow(clean_trips), nrow(clean_trips) * .75, replace = FALSE)
 
+#train.noholiday <- train.v[clean_trips[train.v,]$date != '2019-09-02']
+#train.noholiday <- clean_trips[train.v,] %>% filter(date != '2019-09-02') %>% select(id) %>% unlist %>% as.numeric()
+#test.noholiday <- clean_trips[-train.v,] %>% filter(date != '2019-09-02') %>% select(id) %>% unlist %>% as.numeric()
+
+
 ### LM STARTS ###
 # CREATE a COPY of the clean_trips dataset WITH ONLY THE PREDICTORS WE WANT TO CONSIDER
 ctrips.predictors <- clean_trips[,c(2:3,5:8,10:12,14,19)]
@@ -194,21 +199,23 @@ pred.starts_withoutName.MSE
 # MSE without names: 1460.618
 
 ### PREDICTING FLOW ###
-pred.flow <- predict(lm_flow, ctrips.predictors[-train.v,])
-pred.flow.MSE <- mean((pred.flow - ctrips.predictors$total.start[-train.v])^2)
+pred.flow_withName <- predict(lm_flow_withName, ctrips.predictors[-train.v,])
+pred.flow.MSE <- mean((pred.flow_withName - ctrips.predictors$total.start[-train.v])^2)
 pred.flow.MSE
 # MSE with names: 3682.01
+pred.flow_withoutName <- predict(lm_flow_withoutName, ctrips.predictors[-train.v,])
 # MSE without names: 3590.09
 ```
 
+When using linear regression to predict total starts and station flow, we find that the accuracy of the model depends heavily on whether we include Names or not. Predicting starts with station Name has an R^2 of ``r summary(lm_starts_withName)$r.squared`` and a mean square error of``r pred.starts_withName.MSE``. Without station Name the R^2 increases to ``r summary(lm_starts_withoutName)$r.squared`` and the mean square error to ``r pred.starts_withoutName.MSE``. 
 
-PHIL -- 
+The linear model did not predict flow well, with an R^2 of ``r summary(lm_flow_withName)$r.squared`` and a mean square error of``r pred.flow_withName.MSE``. Without names, the R^2 was a dismal ``r summary(lm_flow_withoutName)$r.squared``.
 
-```{r figlmpredstarts, fig.cap="\\label{fig:figkmeans}Predicting "}
-ggplot(data = ctrips.predictors.start[-train.v,], aes(total.start, pred.starts)) +
+```{r figlmpredstarts, fig.cap="\\label{fig:figkmeans}Predicting Starts with Linear Model, including Station Names"}
+ggplot(data = ctrips.predictors[-train.v,], aes(total.start, pred.starts_withName)) +
   geom_point(size = 2) +
-  geom_abline(slope = coef(lm_starts)[[2]], intercept = coef(lm_starts)[[1]], color = "red") +
-  ggtitle("Predicting Total Starts (without Names)") +
+  geom_abline(slope =1, intercept = 0, color = "red") +
+  ggtitle("Predicting Total Starts (with Names)") +
   xlab("Actual Starts") +
   ylab("Predicted Starts")
 ```
@@ -217,13 +224,13 @@ ggplot(data = ctrips.predictors.start[-train.v,], aes(total.start, pred.starts))
 ```{r}
 ### SUBSET SELECTION
 # Best selection set too large
-regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors.start[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
+regfit.full <- regsubsets(total.start ~ ., data = ctrips.predictors[train.v,], nvmax = 344, method = "forward") #SUBSET ROWS BY TRAIN
 full.sum.starts <- summary(regfit.full)
 names(full.sum.starts)
 ```
 
 
-```{r figlmselect, fig.cap="\\label{fig:figlmselect}K Means"}
+```{r figlmselect, fig.cap="\\label{fig:figlmselect}Choosing the best model"}
 # Plot the adjustments to help choose the best predictors
 par(mfrow=c(2,2))
 
@@ -332,6 +339,7 @@ include_graphics(c("images/flow_low_importance.png"))
 ```
 
 ## Support Vector Machines
+
 After tuning, the best models we found are presented below. We use ony 25% of the data for training in order to allow the model to run in a reasonable amount of time. The best models for flow had a radial kernel with gamma 10 and cost 0.5. The best model for starts had a radial kernel 
 ```{r}
 library(e1071)
@@ -381,6 +389,7 @@ sprintf("Mean squared error on the test data for flow is %f", mean((svr.starts.p
 plot(svr.starts.predict-starts.test, ylab="Residuals", main="Residuals for SVR Starts")
 rm(list=ls())
 ```
+
 Because SVM did not do as well as random forests, we chose not to build SVM models for each of the activity classes. It did, however, still perform better than linear methods. We can see that the errors for starts are well pretty well centered around 0, which is another positive feature of this model. 
 
 ## Local Regression
@@ -388,9 +397,8 @@ Because SVM did not do as well as random forests, we chose not to build SVM mode
 Because linear regression tended not to perform well at the extremes, we thought local regression might be a good approach. But, because the most important factor tended to be name, which is categorical and highly multi-dimensional, it was not a good candidate for things like local regression. None of the models we tried for local regression were superior to other non-linear approaches like trees or SVM.
 
 # RQ3: Interpreting Results
+
 Because the most successful models were decision trees, our results are easily interpreted. Decision trees allow us to see the relative importance of measures of remoteness (T-stop and Bike Lane distance), as well as measures of unsurprising factors, like those that correlate with use (Docks). An added benefit of trees is that they did not use the name of the stations as a predictor, allowing them to be utilized for predicting bike usage at a newly built station. This type of prediction is likely to be of interest to city planners and bike operators.
-
-
 
 
 # Discussion and Conclusion
