@@ -200,8 +200,8 @@ pred.starts_withoutName.MSE
 
 ### PREDICTING FLOW ###
 pred.flow_withName <- predict(lm_flow_withName, ctrips.predictors[-train.v,])
-pred.flow.MSE <- mean((pred.flow_withName - ctrips.predictors$total.start[-train.v])^2)
-pred.flow.MSE
+pred.flow_withName.MSE <- mean((pred.flow_withName - ctrips.predictors$total.start[-train.v])^2)
+pred.flow_withName.MSE
 # MSE with names: 3682.01
 pred.flow_withoutName <- predict(lm_flow_withoutName, ctrips.predictors[-train.v,])
 # MSE without names: 3590.09
